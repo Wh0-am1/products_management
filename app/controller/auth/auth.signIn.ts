@@ -4,8 +4,7 @@ import { db } from "../../db/db.setup";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { SECRET } from "../../config/dotenv.config";
-
-type ERROR = Error & { statusCode?: number };
+import { ERROR } from "../../customeType/ERROR";
 
 export default async function signIn(
     req: Request,
@@ -16,68 +15,64 @@ export default async function signIn(
         name,
         email,
         password,
-    }: { name: string; email: string; password: string } = req.body;
+    }: { name: string; email: string; password: string } = req.body ?? {};
 
-    try {
-        if (!(name && email && password)) {
-            const error: ERROR = new Error(
-                `please provide ${name ? "" : "[name]"} ${email ? "" : "[email]"} ${password ? "" : "[password]"} `,
-            );
-            error.statusCode = 400;
-            throw error;
-        }
-        //name validatoin
-        if (name.length < 2) {
-            const error: ERROR = new Error("name is too short");
-            error.statusCode = 400;
-            throw error;
-        }
-        //email validatoin
-        const regex: RegExp = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!regex.test(email)) {
-            const error: ERROR = new Error("invalid email");
-            error.statusCode = 400;
-            throw error;
-        }
+    if (!(name && email && password)) {
+        const error: ERROR = new Error(
+            `please provide ${name ? "" : "[name]"} ${email ? "" : "[email]"} ${password ? "" : "[password]"} `,
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+    //name validation
+    if (name.length < 2) {
+        const error: ERROR = new Error("name is too short");
+        error.statusCode = 400;
+        throw error;
+    }
+    //email validatoin
+    const regex: RegExp = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!regex.test(email)) {
+        const error: ERROR = new Error("invalid email");
+        error.statusCode = 400;
+        throw error;
+    }
 
-        //password validation
-        if (password.length < 6) {
-            const error: ERROR = new Error("password is too short");
-            error.statusCode = 400;
-            throw error;
-        }
+    //password validation
+    if (password.length < 6) {
+        const error: ERROR = new Error("password is too short");
+        error.statusCode = 400;
+        throw error;
+    }
 
-        //password encryption
-        const Salt = await bcrypt.genSalt(10);
-        const hashPwd = await bcrypt.hash(password, Salt);
+    //password encryption
+    const Salt = await bcrypt.genSalt(10);
+    const hashPwd = await bcrypt.hash(password, Salt);
 
-        //data creation
+    //data creation
 
-        const User = await db.user.create({
-            data: {
+    const User = await db.user.create({
+        data: {
+            name,
+            email,
+            password: hashPwd,
+        },
+    });
+
+    //generate Token
+    const token = jwt.sign({ userId: User.id, role: User.role }, SECRET, {
+        expiresIn: "7d",
+    });
+
+    res.status(201).json({
+        success: true,
+        message: "user successfully created",
+        data: {
+            token,
+            user: {
                 name,
                 email,
-                password: hashPwd,
             },
-        });
-
-        //generate Token
-        const token = jwt.sign({ userId: User.id, role: User.role }, SECRET, {
-            expiresIn: "7d",
-        });
-
-        res.status(201).json({
-            success: true,
-            message: "user successfully created",
-            data: {
-                token,
-                user: {
-                    name,
-                    email,
-                },
-            },
-        });
-    } catch (err) {
-        next(err);
-    }
+        },
+    });
 }

@@ -1,60 +1,23 @@
+//imports
 import { Request, Router } from "express";
 import authUser from "../middleware/auth.middlware";
-
-type Req = Request & { user?: any };
-type ERROR = Error & { statusCode?: number };
+import addProduct from "../controller/products/products.add";
+import updateProduct from "../controller/products/products.update";
+import deleteProduct from "../controller/products/products.delete";
+import fetchAll from "../controller/products/products.fetchAll";
+import singleProduct from "../controller/products/products.single";
 
 const productsRouer = Router();
 
-productsRouer.get("/", async (req, res) => {
-    res.send("all products");
-});
-productsRouer.get("/:id", async (req, res) => {
-    res.send("single product");
-});
+productsRouer.get("/", fetchAll);
+productsRouer.get("/:id", singleProduct);
 
 //authenticate ADMIN
 productsRouer.use(authUser);
 
 //ADMIN only Panle
-productsRouer.post("/add", async (req: Req, res, next) => {
-    try {
-        if (req.user && req.user?.role === "ADMIN") {
-            res.send("create product");
-        } else {
-            const error: ERROR = new Error("Not authorized");
-            error.statusCode = 401;
-            throw error;
-        }
-    } catch (err) {
-        next(err);
-    }
-});
-productsRouer.put("/update/:id", async (req: Req, res, next) => {
-    try {
-        if (req.user && req.user?.role === "ADMIN") {
-            res.send("update product");
-        } else {
-            const error: ERROR = new Error("Not authorized");
-            error.statusCode = 401;
-            throw error;
-        }
-    } catch (err) {
-        next(err);
-    }
-});
-productsRouer.post("/delete/:id", async (req: Req, res, next) => {
-    try {
-        if (req.user && req.user?.role === "ADMIN") {
-            res.send("delete product");
-        } else {
-            const error: ERROR = new Error("Not authorized");
-            error.statusCode = 401;
-            throw error;
-        }
-    } catch (err) {
-        next(err);
-    }
-});
+productsRouer.post("/add", addProduct);
+productsRouer.patch("/update/:id", updateProduct);
+productsRouer.delete("/delete/:id", deleteProduct);
 
 export default productsRouer;
